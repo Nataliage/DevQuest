@@ -50,7 +50,7 @@ class AuthService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Error al crear usuario: {str(e)}"
             )
-            @staticmethod
+    @staticmethod
     async def update_last_login(uid: str):
         try:
             db.collection('users').document(uid).update({
