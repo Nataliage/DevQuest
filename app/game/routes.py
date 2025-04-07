@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Header
 from typing import Optional, List, Dict
+from fastapi import APIRouter, HTTPException, status, Header
 from pydantic import BaseModel
 from ..auth.service import AuthService
 from .service import GameService
@@ -45,11 +45,31 @@ class PotionLevelResponse(BaseModel):
 async def validate_code_endpoint(request: CodeValidationRequest, authorization: Optional[str] = Header(None)):
     """
     Valida el código proporcionado por el usuario para resolver un nivel.
-    
-    - Requiere autenticación mediante token Bearer
-    - Verifica si el código resuelve el problema del nivel
-    - Retorna el resultado con puntuación y mensaje
-    """    
+
+    Args:
+        request (CodeValidationRequest): Datos de la solicitud, que incluyen:
+            - level_id: ID del nivel a validar.
+            - code: Código enviado por el usuario.
+            - script: Script asociado para la validación.
+        authorization (str, opcional): Token de autenticación en formato Bearer.
+
+    Returns:
+        CodeValidationResponse: Resultado de la validación, que contiene:
+            - correct: Indica si el código es correcto.
+            - score: Puntuación obtenida.
+            - message: Mensaje descriptivo del resultado.
+            - script (opcional): Información adicional del script.
+
+    Raises:
+        HTTPException:
+            - 401 Unauthorized: Si no se proporciona el token o el formato es incorrecto.
+              Ejemplo:
+                {
+                    "detail": "Token no proporcionado o formato incorrecto"
+                }
+            - 500 Internal Server Error: Si ocurre un error durante la validación.
+    """
+  
     # validacion del token
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
