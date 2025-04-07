@@ -16,14 +16,19 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
-
+#registrar los routers de cada modulo de la aplicacion
 app.include_router(auth_router)
 app.include_router(levels_router)
 app.include_router(progress_router)
 app.include_router(game_router)
 
+#endpoint raíz para verificar que la API funciona
 @app.get("/")
 def read_root():
+    """
+    Endpoint raíz que confirma que la API está en funcionamiento.
+    Proporciona información básica y enlace a la documentación.
+    """    
     return {"message": "Bienvenido a la API de DevQuest",
             "version": "1.0.0",
             "docs": "/docs"
