@@ -1,5 +1,5 @@
-from app.config.firebase import db
 from fastapi import HTTPException, status
+from app.config.firebase import db
 
 
 class LevelService:
