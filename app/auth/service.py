@@ -43,7 +43,8 @@ class AuthService:
                 "registration_date": datetime.utcnow(),
                 "premium": False,
                 "role": "user",
-                "last_login": datetime.utcnow()
+                "last_login": datetime.utcnow(),
+                "unlocked_levels": [1], #desbloqueamos el primer nivel por defecto
             }
             db.collection('users').document(user.uid).set(user_data)
             

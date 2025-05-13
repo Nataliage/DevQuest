@@ -1,46 +1,14 @@
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, status, Header
 from pydantic import BaseModel
+from app.config.firebase import db
 from ..auth.service import AuthService
 from .service import GameService
+from .schemas import CodeValidationRequest, CodeValidationResponse, LevelStateRequest, CommandLevelRequest, CommandLevelResponse, LevelStatisticsResponse
 
 router = APIRouter(prefix="/game", tags=["Game"])
 
-class CodeValidationRequest(BaseModel):
-    """Modelo para solicitud de validación de código"""
-    level_id: int
-    code: str
-    script: dict #agrego el campo del script
-
-class CodeValidationResponse(BaseModel):
-    """Modelo para respuesta de validación de código"""
-    correct: bool
-    score: int
-    message: Optional[str] = None
-    script: Optional[dict] = None
-    
-class LevelStateRequest(BaseModel):
-    """Modelo para guardar el estado de un nivel"""
-    level_id: int
-    state: dict
-    
-# Nuevo modelo para validación de nivel de pociones
-class PotionLevelRequest(BaseModel):
-    """Modelo para validación de nivel de pociones"""
-    level_id: int
-    potions: Dict[str, int]  # {"VENENO": 3, "SALUD": 2}
-    bloques_utilizados: List[str]  # ["if", "then", "else"]
-
-class PotionLevelResponse(BaseModel):
-    """Modelo para respuesta de validación de nivel de pociones"""
-    correct: bool
-    stars: int
-    message: str
-    pociones_correctas: int
-    total_pociones: int
-    bloques_utilizados: int
-    bloques_optimales: int
-
+   
 @router.post("/validate-code", response_model=CodeValidationResponse)
 async def validate_code_endpoint(request: CodeValidationRequest, authorization: Optional[str] = Header(None)):
     """
@@ -121,16 +89,16 @@ async def exit_game(authorization: Optional[str] = Header(None)):
     await GameService.exit_game(decoded_token["uid"])
     return {"detail": "Juego finalizado correctamente"}
 
-@router.post("/validate-potion-level", response_model=PotionLevelResponse)
-async def validate_potion_level(
-    request: PotionLevelRequest,
+@router.post("/validate-commands", response_model=CommandLevelResponse)
+async def validate_commands(
+    request: CommandLevelRequest,
     authorization: Optional[str] = Header(None)
 ):
     """
     Valida si el usuario ha completado correctamente un nivel de pociones.
     
     - Requiere autenticación mediante token Bearer
-    - Verifica si las cantidades de pociones coinciden con lo esperado
+    - Verifica si los estantes coinciden con lo esperado
     - Evalúa si el número de bloques utilizados es óptimo
     - Asigna 0-3 estrellas según el rendimiento
         
@@ -143,18 +111,15 @@ async def validate_potion_level(
     
     token = authorization.split("Bearer ")[1]
     decoded_token = await AuthService.verify_token(token)
+    uid = decoded_token["uid"]
     
-    return await GameService.validate_potion_level(
-        decoded_token["uid"],
-        request.level_id,
-        request.potions,
-        request.bloques_utilizados
+    return await GameService.validate_commands (
+        uid=uid,
+        level_id=request.level_id,
+        commands=request.list_commands
     )
-    
-    # Endpoint para obtener estadísticas del nivel (nueva función)
-@router.get("/level-statistics/{level_id}", 
-            summary="Obtiene estadísticas de un nivel", 
-            description="Devuelve estadísticas sobre cuántos usuarios han completado el nivel y su puntuación promedio")
+# Endpoint para obtener estadísticas del nivel (nueva función)
+@router.get("/level-statistics/{level_id}", response_model=LevelStatisticsResponse)            
 async def get_level_statistics(
     level_id: int,
     authorization: Optional[str] = Header(None)
@@ -176,6 +141,13 @@ async def get_level_statistics(
     
     token = authorization.split("Bearer ")[1]
     decoded_token = await AuthService.verify_token(token)
+   #uid = decoded_token["uid"] para limitar el acceso a admins
+
+    #  limitar esto a admins:
+    # if not await AuthService.is_admin(uid):
+    #     raise HTTPException(status_code=403, detail="Solo administradores pueden ver estadísticas")
+
+    return await GameService.get_level_statistics(level_id)
     
     # Verificar si es administrador
     # is_admin = await AuthService.is_admin(decoded_token["uid"])
@@ -185,5 +157,4 @@ async def get_level_statistics(
     #         detail="Solo administradores pueden ver estadísticas"
     #     )
     
-    # Obtener estadísticas del nivel
-    return await GameService.get_level_statistics(level_id)
+   

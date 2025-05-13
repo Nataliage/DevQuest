@@ -12,6 +12,100 @@ class GameService:
     guardado de progreso y gestion de sesiones
     """
     @staticmethod
+    async def validate_commands(uid: str, level_id: int, commands: List[str]):
+        """
+        Valida si el usuario ha completado correctamente un nivel de comandos.
+        
+        Args:
+            uid (str): ID del usuario
+            level_id (int): ID del nivel
+            commands (List[str]): Lista de comandos enviados por el usuario
+            
+        Returns:
+            dict: Resultado de la validacion con estrellas obtenidas y feedback 
+        
+        """
+        #1. Verfiicar si el nivel está desbloqueado
+        user_doc = db.collection("users").document(uid).get()
+        user_data = user_doc.to_dict()
+        unlocked = user_data.get("unlocked_levels", [])
+        
+        if level_id not in unlocked:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Nivel no desbloqueado"
+            )
+        #2. Cargar datos del nivel desde Firestore
+         #obtener el nivel del usuario desde Firestore
+        level_doc = db.collection("levels").document(f"Level{level_id}").get()
+        if not level_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Nivel no encontrado"
+            )
+        level_data = level_doc.to_dict()
+        list_commands = level_data.get("listCommands", {})
+    
+        #comandos esperados
+        
+        expected_commands = set()
+        if "ESTANTE" in list_commands:
+            expected_commands.update(list_commands["ESTANTE"].values())
+        for key, value in list_commands.items():
+            if key != "ESTANTE":
+                expected_commands.add(value)
+        received_commands = set(commands) 
+                
+        #starts
+        if received_commands == expected_commands:
+            stars = 3
+            message = "¡Perfecto! Has utilizado exactamente los comandos requeridos."
+        elif expected_commands.issubset(received_commands):
+            stars = 2
+            message = "¡Bien! Has usado todos los comandos correctos, pero también algunos de más."
+        elif received_commands & expected_commands:
+            stars = 1
+            message = "Has acertado algunos comandos, pero te faltan otros."
+        else:
+            stars = 0
+            message = "Comandos incorrectos. Inténtalo de nuevo."
+
+        correct = stars > 0
+ 
+        # guardar el progreso del usuario si es correcto
+        if correct:
+            now = datetime.utcnow()
+            db.collection("progress").add({
+                "user_id": uid,
+                "level_id": level_id,
+                "stars": stars,
+                "start_date": now,
+                "completion_date": now,
+            })
+            # Desbloqueamos el siguiente nivel
+            next_level_id = level_id + 1
+            if next_level_id not in unlocked:
+                unlocked.append(next_level_id)
+                db.collection("users").document(uid).update({
+                    "unlocked_levels": unlocked
+                })
+                
+    
+        #obtener el progreso del usuario actualizado    
+        progress_docs = db.collection("progress").where("user_id", "==", uid).stream()
+        progress = [doc.to_dict() for doc in progress_docs]
+        levels_completed = [p["level_id"] for p in progress if "level_id" in p]
+    
+        #devolver la respuesta
+        return {
+            "correct": True,
+            "stars": stars,
+            "message": "¡Perfecto!" if stars == 3 else  "¡Bien!" if stars == 2 else "¡Sigue intentándolo!",
+            "progress": progress,
+            "levels_completed": levels_completed,
+        }
+        
+    @staticmethod    
     async def validate_code(uid: str, level_id: int, code: str, script: dict):
        
         
@@ -251,43 +345,75 @@ class GameService:
         """
         logger.info(f"Obteniendo estadísticas del nivel {level_id}")
         
-        try:
+        
             # inicializar contadores
-            stats = {
-                "total_attempts": 0,
-                "completed_count": 0,
-                "average_stars": 0,
-                "three_stars_count": 0
-            }
-            
-            # consultar progreso para este nivel
-            progress = db.collection('progress').where("level_id", "==", f"level{level_id}").get()
-            
-            if not progress:
-                logger.info(f"No hay datos de progreso para el nivel {level_id}")
-                return stats
-                
-            # calcular estadísticas
+        stats = {
+        "total_attempts": 0,
+        "completed_count": 0,
+        "average_stars": 0.0,
+        "three_stars_count": 0,
+        "average_duration_seconds": 0.0,
+        }
+
+        try:
+            progress_docs = db.collection("progress").where("level_id", "==", level_id).stream()
+
             total_stars = 0
-            for doc in progress:
+            total_duration = 0
+            duration_entries = 0
+            progress_list = []
+            levels_completed = []
+            found = False  # Indicador de si hubo progreso
+
+            for doc in progress_docs:
+                found = True
                 data = doc.to_dict()
+                progress_list.append(data)
+
                 stats["total_attempts"] += data.get("attempts", 1)
                 stars = data.get("stars", 0)
-                
-                # contar completados y estrellas
+
                 if stars > 0:
                     stats["completed_count"] += 1
                     total_stars += stars
-                    
-                    if stars == 3:
-                        stats["three_stars_count"] += 1
-            
-            # calcular promedio si hay completados
+
+                if stars == 3:
+                    stats["three_stars_count"] += 1
+
+                start = data.get("start_date")
+                end = data.get("completion_date")
+                if start and end:
+                    duration = (end.replace(tzinfo=None) - start.replace(tzinfo=None)).total_seconds()
+                    total_duration += duration
+                    duration_entries += 1
+
+                if "level_id" in data:
+                    levels_completed.append(data["level_id"])
+
+            if not found:
+                logger.info(f"No hay datos de progreso para el nivel {level_id}")
+                return {
+                    **stats,
+                    "progress": [],
+                    "levels_completed": []
+                }
+
             if stats["completed_count"] > 0:
-                stats["average_stars"] = round(total_stars / stats["completed_count"], 1)
-                
+                stats["average_stars"] = round(total_stars / stats["completed_count"], 2)
+
+            if duration_entries > 0:
+                stats["average_duration_seconds"] = round(total_duration / duration_entries, 2)
+
             logger.info(f"Estadísticas calculadas para nivel {level_id}: {stats}")
-            return stats
+            
+            levels_completed = list(set(levels_completed))
+
+            return {
+                **stats,
+                "progress": progress_list,
+                "levels_completed": levels_completed
+            }
+
         except Exception as e:
             logger.error(f"Error obteniendo estadísticas: {str(e)}")
-            return {"error": str(e)}
+            raise HTTPException(status_code=500, detail=f"Error al obtener estadísticas: {str(e)}")

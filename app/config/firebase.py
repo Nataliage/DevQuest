@@ -1,8 +1,14 @@
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
+from dotenv import load_dotenv
 import os
 import logging #libreria logs
 
+
+load_dotenv()  # Cargar variables de entorno desde el archivo .env
+
+FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY")
+# Configuración del logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

@@ -1,27 +1,76 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Depends
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from datetime import datetime
+from app.config.firebase import db, FIREBASE_API_KEY
+import requests
 from .service import AuthService
-from .schemas import User, UserCreate
+from .schemas import User, UserCreate, UserLogin, UserRegister, LoginResponse
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-class UserRegister(BaseModel):
-    email: EmailStr
-    password: str
-    username: str
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-class TokenResponse(BaseModel):
-    uid: str
-    email: str
-    token: str
-    role: str
-
+    
+@router.post("/login", response_model=LoginResponse)
+async def login(user: UserLogin):      
+    #autenticar con firebase REST API
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
+    response = requests.post(url, json={
+        "email": user.email,
+        "password": user.password,
+        "returnSecureToken": True
+    })
+                   
+    if response.status_code != 200:
+        raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Credenciales inválidas",                    
+            )
+    login_info = response.json()
+    token = login_info.get("idToken")
+    uid = login_info.get("localId")
+    if not token or not uid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Error al obtener el token de autenticación",
+        )
+    #obtener datos del user desde Firebase
+    user_doc = db.collection("users").document(uid).get()
+    if not user_doc.exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado en la base de datos",
+        )
+        
+    user_data = user_doc.to_dict()
+    
+    #obtener el progress desde firebase
+    progress_docs = db.collection("progress").where("user_id", "==", uid).stream()
+    progress = []
+    levels_completed = []
+    
+    for doc in progress_docs:
+        data = doc.to_dict()
+        progress.append(data)
+        if "level_id" in data:
+            levels_completed.append(data["level_id"])
+    
+    #actualizamos last login
+    db.collection("users").document(uid).update({
+        "last_login": datetime.utcnow()
+    })
+    #response del backend
+    return {
+        "auth": token,
+        "uid": uid,
+        "email": user_data.get("email"),
+        "username": user_data.get("username"),
+        "role": user_data.get("role", "user"),
+        "progress": progress,
+        "levels_completed": levels_completed
+    }    
+        
+            
+          
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserRegister):    
     user_record = await AuthService.create_user(

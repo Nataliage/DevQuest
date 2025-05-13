@@ -21,7 +21,7 @@ class Progress(ProgressBase):
     start_date: datetime
     completion_date: Optional[datetime] = None
     
-    class Config:
+class Config:
         orm_mode = True
 
 @router.get("/", response_model=List[Progress])
