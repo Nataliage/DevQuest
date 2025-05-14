@@ -13,7 +13,7 @@ load_dotenv()
 #from app.config.firebase import firebase_app
 
 
-app = FastAPI(title="DevQuest API", description="Backend API for DevQuest application", version= "1.0.0", openapi_prefix= "/api", docs_url="/docs", redoc_url=None, openapi_url="/openapi.json")
+app = FastAPI(title="DevQuest API", description="Backend API for DevQuest application", version= "1.0.0", openapi_prefix= "/api", root_path="/api", docs_url="/docs", redoc_url=None, openapi_url="/openapi.json")
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,7 +42,8 @@ def read_root():
     Endpoint raíz que confirma que la API está en funcionamiento.
     Proporciona información básica y enlace a la documentación.
     """    
-    return {"message": "Bienvenido a la API de DevQuest",
-            "version": "1.0.0",
-            "docs": "/api/docs"
-            }
+    return JSONResponse({
+        "message": "Bienvenido a la API de DevQuest",
+        "version": "1.0.0",
+        "docs": "/api/docs"
+    })
