@@ -7,6 +7,7 @@ from app.levels.routes import router as levels_router
 from app.progress.routes import router as progress_router
 from app.game.routes import router as game_router
 # Cargar variables de entorno desde el archivo .env
+
 from dotenv import load_dotenv
 
 load_dotenv()
