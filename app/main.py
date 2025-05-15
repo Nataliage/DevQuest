@@ -13,7 +13,7 @@ load_dotenv()
 #from app.config.firebase import firebase_app
 
 
-app = FastAPI(title="DevQuest API", description="Backend API for DevQuest application", version= "1.0.0", openapi_prefix= "/api", root_path="/api", docs_url="/docs", redoc_url=None, openapi_url="/openapi.json")
+app = FastAPI(title="DevQuest API", description="Backend API for DevQuest application", version= "1.0.0", root_path="/api", docs_url="/docs", redoc_url=None, openapi_url="/openapi.json")
 
 app.add_middleware(
     CORSMiddleware,
