@@ -64,7 +64,7 @@ async def login(user: UserLogin):
         
             
           
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=LoginResponse)
 async def register(user: UserRegister):    
     user_record = await AuthService.create_user(
         email=user.email,
