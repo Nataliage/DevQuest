@@ -23,14 +23,10 @@ class LevelService:
     @staticmethod
     async def get_level_by_id(level_id: int):
         try:
-            level_ref = db.collection('levels').document(str(level_id))
-            level = level_ref.get()
-            if not level.exists:
+            query = db.collection("levels").where("level_id", "==", level_id).limit(1).get()
+            if not query:
                 return None
-            return {
-                "level_id": level.id,
-                **level.to_dict()
-            }
+            return query[0].to_dict()
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header, Depends
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from firebase_admin import auth
 from app.config.firebase import db, FIREBASE_API_KEY
 import requests
 from .service import AuthService
 from .schemas import User, UserCreate, UserLogin, UserRegister, LoginResponse
+from app.progress.service import ProgressService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -44,29 +46,20 @@ async def login(user: UserLogin):
     user_data = user_doc.to_dict()
     
     #obtener el progress desde firebase
-    progress_docs = db.collection("progress").where("user_id", "==", uid).stream()
-    progress = []
-    levels_completed = []
-    
-    for doc in progress_docs:
-        data = doc.to_dict()
-        progress.append(data)
-        if "level_id" in data:
-            levels_completed.append(data["level_id"])
-    
+    levels_completed = await ProgressService.get_levels_completed_by_user(uid) 
+            
     #actualizamos last login
     db.collection("users").document(uid).update({
         "last_login": datetime.utcnow()
     })
     #response del backend
     return {
-        "auth": token,
-        "uid": uid,
+        "auth": token,        
         "email": user_data.get("email"),
         "username": user_data.get("username"),
-        "role": user_data.get("role", "user"),
-        "progress": progress,
+        "role": user_data.get("role", "user"),        
         "levels_completed": levels_completed
+        #"uid": uid,
     }    
         
             
@@ -78,10 +71,15 @@ async def register(user: UserRegister):
         password=user.password,
         display_name=user.username
     )    
+    token = auth.create_custom_token(user_record.uid).decode("utf-8")    
+    levels_completed = await ProgressService.get_levels_completed_by_user(user_record.uid)
     return {
-        "message": "Usuario registrado correctamente",
-        "uid": user_record.uid,
-        "email": user_record.email
+        #"message": "Usuario registrado correctamente",
+        "auth": token,
+        "username": user.username,        
+        "email": user_record.email,
+        "levels_completed": levels_completed
+        #"uid": user_record.uid,
     }
 
 @router.post("/verify-token")

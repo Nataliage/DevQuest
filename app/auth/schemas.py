@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 class UserRegister(BaseModel):
+    """Datos requeridos para registrar un nuevo usuario"""
     email: EmailStr
     password: str
     username: str
@@ -11,16 +12,23 @@ class UserLogin(BaseModel):
     """Datos requeridos para iniciar sesión"""
     email: EmailStr
     password: str
-
+class UserRegisterResponse(BaseModel):
+    """Respuesta devuelta al frontend al registrar un nuevo usuario"""
+    auth: str    
+    email: EmailStr
+    username: str
+    role: str    
+    levels_completed: Optional[List[int]] = None
+    #uid: str
 class LoginResponse(BaseModel):
     """Respuesta devuelta al frontend al iniciar sesión"""
-    auth: str
-    uid: str
-    email: str
+    auth: str    
+    email: EmailStr
     username: str    
-    role: str
-    progress: Optional[List[Dict[str, Any]]] = None
+    role: str    
     levels_completed: Optional[List[int]] = None
+    #progress: Optional[List[Dict[str, Any]]] = None
+    #uid: str
 class UserBase(BaseModel):
     email: EmailStr
     username: str

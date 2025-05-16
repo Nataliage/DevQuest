@@ -5,6 +5,29 @@ from datetime import datetime
 
 
 class ProgressService:
+    
+    @staticmethod
+    async def get_levels_completed_by_user(uid: str):
+        """
+        Obtiene los niveles completados por un usuario específico.
+        """
+        try:
+            query = db.collection("progress").where("user_id", "==", uid).get()
+            if not query:
+                return None
+            level_ids = []
+            for doc in query:
+                data = doc.to_dict()
+                level_id = data.get("level_id")
+                if level_id is not None and level_id not in level_ids:
+                    level_ids.append(level_id)
+            return level_ids if level_ids else None
+        except Exception as e:
+            print(f"Error al obtener levels_completed: {str(e)}")
+            return None
+    
+    
+    
     @staticmethod
     async def get_user_progress(user_id: str):
         try:
