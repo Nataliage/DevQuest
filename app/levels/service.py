@@ -5,6 +5,13 @@ from app.config.firebase import db
 class LevelService:
     @staticmethod
     async def get_all_levels():
+        """
+        Obtiene todos los niveles ordenados por su campo 'order'.
+        Returns:
+            List[dict]: Lista de niveles con sus datos y su ID.        
+        Raises:
+            HTTPException: Error interno en caso de fallo al obtener datos.
+        """
         try:
             levels_ref = db.collection('levels')
             levels = levels_ref.order_by('order').get()
@@ -22,6 +29,15 @@ class LevelService:
             
     @staticmethod
     async def get_level_by_id(level_id: int):
+        """
+        Obtiene un nivel específico mediante su level_id.
+        Args:
+            level_id (int): Identificador del nivel a buscar.
+        Returns:
+            dict | None: Datos del nivel si existe, None si no se encuentra.
+        Raises:
+            HTTPException: Error interno en caso de fallo al consultar.
+        """
         try:
             query = db.collection("levels").where("level_id", "==", level_id).limit(1).get()
             if not query:
@@ -35,6 +51,15 @@ class LevelService:
     
     @staticmethod
     async def is_admin(uid: str):
+        """
+        Verifica si un usuario tiene rol de administrador.
+        Args:
+            uid (str): ID del usuario a verificar.
+        Returns:
+            bool: True si es admin, False en caso contrario.
+        Raises:
+            HTTPException: Error interno en caso de fallo al consultar.
+        """
         try:
             # Aquí asumimos que tienes una colección de administradores
             admin_ref = db.collection('users').document(uid)
@@ -51,6 +76,15 @@ class LevelService:
             )            
     @staticmethod
     async def create_level(level):
+        """
+        Crea un nuevo nivel asignándole un level_id secuencial único.
+        Args:
+            level (LevelCreate): Modelo con datos del nuevo nivel.
+        Returns:
+            dict: Datos del nivel creado, incluyendo level_id asignado.
+        Raises:
+            HTTPException: Error interno en caso de fallo al crear el nivel.
+        """
         try:
             levels_ref = db.collection('levels')
             # Obtener todos los niveles para determinar el máximo level_id actual

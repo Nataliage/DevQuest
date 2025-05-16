@@ -10,10 +10,19 @@ from .schemas import User, UserCreate, UserLogin, UserRegister, LoginResponse
 from app.progress.service import ProgressService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
     
-@router.post("/login", response_model=LoginResponse)
-async def login(user: UserLogin):      
+@router.post("/login", response_model=LoginResponse, summary="Iniciar sesión de usuario")
+async def login(user: UserLogin):  
+    """
+    Endpoint para iniciar sesión de usuario.
+    Args:
+        user (UserLogin): Datos de login que incluyen email y contraseña.
+    Raises:
+        HTTPException 401: Credenciales inválidas o error al obtener token.
+        HTTPException 404: Usuario no encontrado en base de datos.
+    Returns:        
+        dict: Contiene token de autenticación, email, username, role y niveles completados.
+    """    
     #autenticar con firebase REST API
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
     response = requests.post(url, json={
@@ -63,28 +72,79 @@ async def login(user: UserLogin):
     }    
         
             
-          
-@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=LoginResponse)
-async def register(user: UserRegister):    
-    user_record = await AuthService.create_user(
-        email=user.email,
-        password=user.password,
-        display_name=user.username
-    )    
-    token = auth.create_custom_token(user_record.uid).decode("utf-8")    
-    levels_completed = await ProgressService.get_levels_completed_by_user(user_record.uid)
-    return {
-        #"message": "Usuario registrado correctamente",
-        "auth": token,
-        "username": user.username,        
-        "email": user_record.email,
-        "role": "user",
-        "levels_completed": levels_completed
-        #"uid": user_record.uid,
-    }
+@router.post(
+    "/register",
+    status_code=status.HTTP_201_CREATED,
+    response_model=LoginResponse,
+    summary="Registrar nuevo usuario"
+)         
+async def register(user: UserRegister):
+    """
+    Endpoint para registrar un nuevo usuario.
+    Args:
+        user (UserRegister): Datos para registro con email, contraseña y username.
+    Returns:
+        dict: Contiene token de autenticación, email, username, role y niveles completados.
+    Raises:
+        HTTPException 400: Error al crear usuario (ej: email ya usado, contraseña inválida).
+        HTTPException 500: Error inesperado en el servidor.
+    """
+    try:
+        #Crear usuario en Firebase Auth y Firestore
+        user_record = await AuthService.create_user(
+            email=user.email,
+            password=user.password,
+            display_name=user.username
+        )
 
-@router.post("/verify-token")
+        # Generar custom token
+        token = auth.create_custom_token(user_record.uid).decode("utf-8")
+        
+
+        # Obtener progreso inicial
+        levels_completed = await ProgressService.get_levels_completed_by_user(
+            user_record.uid
+        )
+
+        # Devolver respuesta
+        return {
+            "auth": token,
+            "username": user.username,
+            "email": user_record.email,
+            "role": "user",
+            "levels_completed": levels_completed
+        }
+
+    except HTTPException:
+        # Si ya es un error controlado (400, 422…) lo relanzamos
+        raise
+
+    except Exception as e:
+        # Mapeo del error de email duplicado
+        msg = str(e).lower()
+        if "email already exists" in msg or "email-already-exists" in msg:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El correo ya existe"
+            )
+        # Cualquier otro error inesperado
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error inesperado en /register: {e}"
+        )
+    
+
+@router.post("/verify-token", summary="Verificar token JWT")
 async def verify_token(authorization: Optional[str] = Header(None)):
+    """
+    Verifica la validez de un token JWT.
+    Args:
+        authorization (str): Token JWT en header Authorization (Bearer).
+    Raises:
+        HTTPException 401: Token no proporcionado o formato incorrecto.
+    Returns:
+        dict: Estado de validez, uid y email asociado.
+    """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

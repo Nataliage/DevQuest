@@ -10,17 +10,14 @@ from .schemas import Progress, ProgressCreate
 router = APIRouter(prefix="/progress", tags=["Progress"])
 #modelo base para progress
 
-@router.get("/", response_model=List[Progress])
+@router.get("/", response_model=List[Progress], summary="Obtener progreso del usuario")
 async def get_user_progress(authorization: Optional[str] = Header(None)):
     """
     Obtiene el progreso de un usuario autenticado.
-
     Args:
         authorization (str, optional): Token de autorización en formato Bearer.
-
     Raises:
         HTTPException: Si el token no está presente o no es válido.
-
     Returns:
         List[Progress]: Lista con el progreso de los niveles del usuario.
     """
@@ -37,18 +34,15 @@ async def get_user_progress(authorization: Optional[str] = Header(None)):
     user_progress = await ProgressService.get_user_progress(decoded_token["uid"])
     return user_progress
 
-@router.post("/", response_model=Progress, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=Progress, status_code=status.HTTP_201_CREATED, summary="Registrar progreso del usuario")
 async def record_progress(progress: ProgressCreate, authorization: Optional[str] = Header(None)):
     """
     Registra el progreso de un usuario en un nivel específico.
-
     Args:
         progress (ProgressCreate): Datos del progreso a registrar.
         authorization (str, optional): Token de autorización en formato Bearer.
-
     Raises:
         HTTPException: Si el token no está presente o no es válido.
-
     Returns:
         Progress: El registro del progreso creado.
     """

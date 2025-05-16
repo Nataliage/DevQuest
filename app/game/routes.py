@@ -9,7 +9,7 @@ from .schemas import CodeValidationRequest, CodeValidationResponse, LevelStateRe
 router = APIRouter(prefix="/game", tags=["Game"])
 
    
-@router.post("/validate-code", response_model=CodeValidationResponse)
+@router.post("/validate-code", response_model=CodeValidationResponse, summary="Validar código de nivel")
 async def validate_code_endpoint(request: CodeValidationRequest, authorization: Optional[str] = Header(None)):
     """
     Valida el código proporcionado por el usuario para resolver un nivel.
@@ -50,7 +50,7 @@ async def validate_code_endpoint(request: CodeValidationRequest, authorization: 
     # Llamada al servicio para validar el código
     return await GameService.validate_code(decoded_token["uid"], request.level_id, request.code, request.script) 
 
-@router.post("/save-level-state")
+@router.post("/save-level-state", summary="Guardar estado del nivel")
 async def save_level_state(request: LevelStateRequest, authorization: Optional[str] = Header(None)):
     """
     Guarda el estado actual del nivel para el usuario.
@@ -58,7 +58,18 @@ async def save_level_state(request: LevelStateRequest, authorization: Optional[s
     
     - Requiere autenticación mediante token Bearer
     - Guarda el estado del nivel en la base de datos
+    Args:
+        request (LevelStateRequest): Contiene level_id y estado serializado.
+        authorization (str, optional): Token JWT Bearer para autenticación.
+
+    Returns:
+        dict: Mensaje de confirmación.
+
+    Raises:
+        HTTPException 401: Token no proporcionado o formato incorrecto.
+        HTTPException 500: Error interno al guardar estado.
     """
+    
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -70,13 +81,22 @@ async def save_level_state(request: LevelStateRequest, authorization: Optional[s
     await GameService.save_level_state(decoded_token["uid"], request.level_id, request.state)
     return {"detail": "Estado guardado correctamente"}
 
-@router.post("/exit")
+@router.post("/exit", summary="Registrar salida del juego")
 async def exit_game(authorization: Optional[str] = Header(None)):
     """
     Registra que el usuario ha salido del juego.
     
     - Requiere autenticación mediante token Bearer
     - Útil para análisis de comportamiento y estadísticas
+    Args:
+        authorization (str, optional): Token JWT Bearer para autenticación.
+
+    Returns:
+        dict: Mensaje de confirmación.
+
+    Raises:
+        HTTPException 401: Token no proporcionado o formato incorrecto.
+        HTTPException 500: Error al registrar la salida.
     """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
@@ -89,7 +109,7 @@ async def exit_game(authorization: Optional[str] = Header(None)):
     await GameService.exit_game(decoded_token["uid"])
     return {"detail": "Juego finalizado correctamente"}
 
-@router.post("/validate-commands", response_model=CommandLevelResponse)
+@router.post("/validate-commands", response_model=CommandLevelResponse, summary="Validar comandos del nivel")
 async def validate_commands(
     request: CommandLevelRequest,
     authorization: Optional[str] = Header(None)
@@ -101,7 +121,15 @@ async def validate_commands(
     - Verifica si los estantes coinciden con lo esperado
     - Evalúa si el número de bloques utilizados es óptimo
     - Asigna 0-3 estrellas según el rendimiento
-        
+    Args:
+        request (CommandLevelRequest): level_id y lista de comandos.
+        authorization (str, optional): Token JWT Bearer para autenticación.
+
+    Returns:
+        CommandLevelResponse: Resultado con estrellas, mensaje, progreso y niveles completados.
+
+    Raises:
+        HTTPException 401: Token no proporcionado o formato incorrecto.
     """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
@@ -119,7 +147,7 @@ async def validate_commands(
         commands=request.list_commands
     )
 # Endpoint para obtener estadísticas del nivel (nueva función)
-@router.get("/level-statistics/{level_id}", response_model=LevelStatisticsResponse)            
+@router.get("/level-statistics/{level_id}", response_model=LevelStatisticsResponse, summary="Obtener estadísticas del nivel")            
 async def get_level_statistics(
     level_id: int,
     authorization: Optional[str] = Header(None)
@@ -131,6 +159,16 @@ async def get_level_statistics(
     - Devuelve información como intentos totales, usuarios que lo completaron,
       estrellas promedio y cuántos obtuvieron 3 estrellas
     - Útil para análisis y mejoras del juego
+    Args:
+        level_id (int): ID del nivel a consultar.
+        authorization (str, optional): Token JWT Bearer para autenticación.
+
+    Returns:
+        LevelStatisticsResponse: Estadísticas del nivel.
+
+    Raises:
+        HTTPException 401: Token no proporcionado o formato incorrecto.
+        HTTPException 403: Acceso restringido (comentado para futuras mejoras).
     """
     # Validacion del token de autenticación
     if not authorization or not authorization.startswith("Bearer "):

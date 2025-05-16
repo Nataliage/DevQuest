@@ -1,31 +1,30 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 
 class LevelResponse(BaseModel):
-    level_id: int
-    name: str
-    description: str
-    #difficulty: int
-    max_score: int
-    order: Optional[int] = None
-    estimated_time: Optional[int] = None   
-    potions_config: Dict[str, int]
-    commands: List[str]
+    level_id: int = Field(..., example=1, description="ID único del nivel")
+    name: str = Field(..., example="Nivel 1: Introducción", description="Nombre del nivel")
+    description: str = Field(..., example="Primer nivel para familiarizarse con los controles", description="Descripción del nivel")
+    #difficulty: int = Field(..., example=1, description="Nivel de dificultad (opcional)")
+    max_score: int = Field(..., example=100, description="Puntuación máxima del nivel")
+    order: Optional[int] = Field(None, example=1, description="Orden de aparición del nivel")
+    estimated_time: Optional[int] = Field(None, example=15, description="Tiempo estimado para completar el nivel en minutos")   
+    potions_config: Dict[str, int] = Field(..., example={"pocion_vida": 3, "pocion_mana": 2}, description="Configuración de pociones necesarias para el nivel")
+    commands: List[str] = Field(..., example=["ESTANTE1", "SALUD", "VENENO"], description="Lista de comandos esperados para el nivel")
 
 
 class LevelBase(BaseModel):
-    name: str
-    description: str
-    #difficulty: int
-    max_score: int
-    order: int
-    estimated_time: int
-
+    name: str = Field(..., example="Nivel 1: Introducción", description="Nombre del nivel")
+    description: str = Field(..., example="Primer nivel para familiarizarse con los controles", description="Descripción del nivel")
+    #difficulty: int = Field(..., example=1, description="Nivel de dificultad")
+    max_score: int = Field(..., example=100, description="Puntuación máxima del nivel")
+    order: int = Field(..., example=1, description="Orden de aparición del nivel")
+    estimated_time: int = Field(..., example=15, description="Tiempo estimado para completar el nivel en minutos")
 class LevelCreate(LevelBase):
     pass
 
 class Level(LevelBase):
-    level_id: int
+    level_id: int = Field(..., example=1, description="ID único del nivel")
     
     class Config:
         orm_mode = True

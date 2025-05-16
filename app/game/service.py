@@ -22,10 +22,18 @@ class GameService:
             commands (List[str]): Lista de comandos enviados por el usuario
             
         Returns:
-            dict: Resultado de la validacion con estrellas obtenidas y feedback 
-        
+            Dict[str, Any]: Diccionario con:
+                - correct (bool): Indica si el nivel fue completado correctamente.
+                - stars (int): Número de estrellas obtenidas (0-3).
+                - message (str): Mensaje con feedback al usuario.
+                - progress (List[Dict]): Lista con progreso actualizado.
+                - levels_completed (List[int]): Lista de niveles completados.
+
+        Raises:
+            HTTPException(403): Si el nivel no está desbloqueado para el usuario.
+            HTTPException(404): Si el nivel no existe en la base de datos.
         """
-        #1. Verfiicar si el nivel está desbloqueado
+        # Verfiicar si el nivel está desbloqueado
         user_doc = db.collection("users").document(uid).get()
         user_data = user_doc.to_dict()
         unlocked = user_data.get("unlocked_levels", [])
@@ -35,7 +43,7 @@ class GameService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Nivel no desbloqueado"
             )
-        #2. Cargar datos del nivel desde Firestore
+        
          #obtener el nivel del usuario desde Firestore
         level_doc = db.collection("levels").document(f"Level{level_id}").get()
         if not level_doc.exists:
@@ -107,6 +115,18 @@ class GameService:
         
     @staticmethod    
     async def validate_code(uid: str, level_id: int, code: str, script: dict):
+        """
+        Valida el código enviado por el usuario para un nivel.
+
+        Args:
+            uid (str): ID del usuario.
+            level_id (int): ID del nivel.
+            code (str): Código fuente enviado.
+            script (dict): Script para validación.
+
+        Returns:
+            Dict[str, Any]: Resultado con correctitud, puntuación, mensaje y script opcional.
+        """
        
         
         if code == "correcto":
@@ -133,7 +153,7 @@ class GameService:
             state (dict): Estado del nivel a guardar
             
         Raises:
-            HTTPException: Si ocurre un error al guardar el estado
+            HTTPException(500): Si ocurre un error al guardar el estado.
         """
         logger.info(f"Guardando estado del nivel {level_id} para usuario {uid}")
         # Guarda el estado del nivel en Firestore
@@ -158,11 +178,9 @@ class GameService:
     @staticmethod
     async def exit_game(uid: str):
         """
-        Marca que el usuario ha salido del juego, util para analisis y estadisticas.
-        
+        Marca que el usuario ha salido del juego, util para analisis y estadisticas.        
         Args:
-            uid (str): ID del usuario que sale del juego
-            
+            uid (str): ID del usuario que sale del juego            
         Raises:
             HTTPException: Si ocurre un error al registrar la salida 
         
@@ -196,8 +214,7 @@ class GameService:
             bloques_utilizados (List[str]): Lista de bloques utilizados en la solución
             
         Returns:
-            dict: Resultado de la validacion con estrellas obtenidas y feedback 
-        
+            dict: Resultado de la validacion con estrellas obtenidas y feedback         
         """
         logger.info(f"Validando nivel de pociones {level_id} para usuario {uid}")
         try:
@@ -286,8 +303,7 @@ class GameService:
     async def save_potion_progress(uid: str, level_id: int, stars: int, potions: Dict[str, int], bloques: List[str]):
         """
         Guarda el progreso del usuario en un nivel de pociones.
-        Solo actualiza si la nueva puntuación es mejor que la anterior.
-        
+        Solo actualiza si la nueva puntuación es mejor que la anterior.        
         Args:
             uid (str): ID del usuario
             level_id (int): ID del nivel

@@ -7,12 +7,33 @@ from ..auth.service import AuthService
 
 router = APIRouter(prefix="/levels", tags=["Levels"])
 
-@router.get("/", response_model=List[Level])
-async def get_levels(authorization: Optional[str] = Header(None)):  
+@router.get("/", response_model=List[Level], summary="Obtener todos los niveles")
+async def get_levels(authorization: Optional[str] = Header(None)):
+    """
+    Obtiene la lista completa de niveles disponibles.
+    Args:
+        authorization (str, optional): Token JWT en el header Authorization (Bearer).
+    Returns:
+        List[Level]: Lista de niveles con sus datos básicos.
+    Nota:
+        No requiere autenticación para obtener la lista.
+    """  
     levels = await LevelService.get_all_levels()
     return levels
-@router.get("/{level_id}", response_model=LevelResponse)
+@router.get("/{level_id}", response_model=LevelResponse, summary="Obtener detalles de un nivel")
 async def get_level(level_id: int, authorization: Optional[str] = Header(None)):
+    """
+    Obtiene información detallada de un nivel específico, incluyendo configuración de pociones
+    y comandos esperados.
+    Args:
+        level_id (int): ID del nivel a consultar.
+        authorization (str, optional): Token JWT en el header Authorization (Bearer).
+    Raises:
+        HTTPException 401: Si no se proporciona o es inválido el token.
+        HTTPException 404: Si el nivel no existe.
+    Returns:
+        LevelResponse: Detalles del nivel, configuración y comandos esperados.
+    """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -66,8 +87,19 @@ async def get_level(level_id: int, authorization: Optional[str] = Header(None)):
     # 
 
 # solo admins pueden crear actualizar niveles
-@router.post("/", response_model=Level, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=Level, status_code=status.HTTP_201_CREATED, summary="Crear un nuevo nivel")
 async def create_level(level: LevelCreate, authorization: Optional[str] = Header(None)):
+    """
+    Crea un nuevo nivel. Solo accesible para usuarios con permisos de administrador.
+    Args:
+        level (LevelCreate): Datos para crear el nuevo nivel.
+        authorization (str, optional): Token JWT en el header Authorization (Bearer).
+    Raises:
+        HTTPException 401: Si no se proporciona o es inválido el token.
+        HTTPException 403: Si el usuario no tiene permisos de administrador.
+    Returns:
+        Level: Nivel creado con los datos registrados.
+    """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
