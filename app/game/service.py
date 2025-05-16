@@ -98,7 +98,7 @@ class GameService:
     
         #devolver la respuesta
         return {
-            "correct": True,
+            "correct": correct,
             "stars": stars,
             "message": "¡Perfecto!" if stars == 3 else  "¡Bien!" if stars == 2 else "¡Sigue intentándolo!",
             "progress": progress,

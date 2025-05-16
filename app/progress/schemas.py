@@ -10,10 +10,10 @@ class ProgressCreate(ProgressBase):
     pass
 #progress que se devuelve en las respuestas
 class Progress(ProgressBase):
-    progress_id: int
+    progress_id: str  
     user_id: str
     start_date: datetime
     completion_date: Optional[datetime] = None
-    
-class Config:
-        orm_mode = True
+
+    class Config:
+        orm_mode = True 

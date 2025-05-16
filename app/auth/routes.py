@@ -78,6 +78,7 @@ async def register(user: UserRegister):
         "auth": token,
         "username": user.username,        
         "email": user_record.email,
+        "role": "user",
         "levels_completed": levels_completed
         #"uid": user_record.uid,
     }

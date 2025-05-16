@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 
 try:
     #ruta al archivo de credenciales de Firebase
-    certificate_path = "serviceAccountKey.json"
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    certificate_path = os.path.join(BASE_DIR, "serviceAccountKey.json")
+    print("🔥 RUTA CORRECTA:", certificate_path)
+    
+    #certificate_path = "serviceAccountKey.json"
     #verificar que el archivo existe
     if not os.path.exists(certificate_path):
         raise FileNotFoundError(f"No se encontró el archivo de certificado: {certificate_path}")

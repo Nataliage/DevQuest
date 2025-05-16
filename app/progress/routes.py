@@ -4,25 +4,11 @@ from typing import List, Optional
 from datetime import datetime
 from .service import ProgressService
 from ..auth.service import AuthService
+from .schemas import Progress, ProgressCreate
 
 # Crear un router específico para la gestión del progreso del usuario.
 router = APIRouter(prefix="/progress", tags=["Progress"])
 #modelo base para progress
-class ProgressBase(BaseModel):
-    level_id: int
-    score: int    
-#registro de progress 
-class ProgressCreate(ProgressBase):
-    pass
-#progress que se devuelve en las respuestas
-class Progress(ProgressBase):
-    progress_id: int
-    user_id: str
-    start_date: datetime
-    completion_date: Optional[datetime] = None
-    
-class Config:
-        orm_mode = True
 
 @router.get("/", response_model=List[Progress])
 async def get_user_progress(authorization: Optional[str] = Header(None)):
