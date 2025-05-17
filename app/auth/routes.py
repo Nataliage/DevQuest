@@ -76,37 +76,37 @@ async def login(user: UserLogin):
     "/register",
     status_code=status.HTTP_201_CREATED,
     response_model=LoginResponse,
-    summary="Registrar nuevo usuario"
-)         
+    summary="Registrar nuevo usuario y loguear automáticamente"
+)
 async def register(user: UserRegister):
-    """
-    Endpoint para registrar un nuevo usuario.
-    Args:
-        user (UserRegister): Datos para registro con email, contraseña y username.
-    Returns:
-        dict: Contiene token de autenticación, email, username, role y niveles completados.
-    Raises:
-        HTTPException 400: Error al crear usuario (ej: email ya usado, contraseña inválida).
-        HTTPException 500: Error inesperado en el servidor.
-    """
     try:
-        #Crear usuario en Firebase Auth y Firestore
+        # Crear usuario con Firebase Admin
         user_record = await AuthService.create_user(
             email=user.email,
             password=user.password,
             display_name=user.username
         )
+        custom_token = auth.create_custom_token(user_record.uid).decode("utf-8")
 
-        # Generar custom token
-        token = auth.create_custom_token(user_record.uid).decode("utf-8")
-        
+        # Autenticar usuario para obtener token oficial Firebase
+        url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
+        response = requests.post(url, json={
+            "email": user.email,
+            "password": user.password,
+            "returnSecureToken": True
+        })
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Error al iniciar sesión después del registro"
+            )
+        login_info = response.json()
+        token = login_info.get("idToken")
 
-        # Obtener progreso inicial
-        levels_completed = await ProgressService.get_levels_completed_by_user(
-            user_record.uid
-        )
+        # Obtener progreso inicial (niveles completados)
+        levels_completed = await ProgressService.get_levels_completed_by_user(user_record.uid) or []
 
-        # Devolver respuesta
+        # Devolver token oficial y datos de usuario
         return {
             "auth": token,
             "username": user.username,
@@ -116,18 +116,15 @@ async def register(user: UserRegister):
         }
 
     except HTTPException:
-        # Si ya es un error controlado (400, 422…) lo relanzamos
         raise
 
     except Exception as e:
-        # Mapeo del error de email duplicado
         msg = str(e).lower()
         if "email already exists" in msg or "email-already-exists" in msg:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="El correo ya existe"
             )
-        # Cualquier otro error inesperado
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error inesperado en /register: {e}"

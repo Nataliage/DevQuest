@@ -1,25 +1,56 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from pydantic import BaseModel
 from typing import List, Optional, Dict
-from .schemas import Level, LevelCreate, LevelResponse
+from .schemas import Level, LevelCreate, LevelResponse, LevelWithCompletion
 from .service import LevelService
 from ..auth.service import AuthService
+from app.progress.service import ProgressService
 
 router = APIRouter(prefix="/levels", tags=["Levels"])
 
-@router.get("/", response_model=List[Level], summary="Obtener todos los niveles")
+@router.get("/", response_model=List[LevelWithCompletion], summary="Obtener todos los niveles")
 async def get_levels(authorization: Optional[str] = Header(None)):
     """
-    Obtiene la lista completa de niveles disponibles.
+    Obtiene la lista completa de niveles disponibles y añade el estado 'isCompleted' por usuario.
     Args:
-        authorization (str, optional): Token JWT en el header Authorization (Bearer).
+        authorization (str, optional): Token JWT Bearer para identificar al usuario.
     Returns:
-        List[Level]: Lista de niveles con sus datos básicos.
-    Nota:
-        No requiere autenticación para obtener la lista.
-    """  
+        List[LevelWithCompletion]: Lista de niveles con flag isCompleted.
+    """ 
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token no proporcionado o formato incorrecto",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = authorization.split("Bearer ")[1]
+    decoded_token = await AuthService.verify_token(token)
+    uid = decoded_token["uid"]
+
+    # Obtener todos los niveles
     levels = await LevelService.get_all_levels()
-    return levels
+    print("Niveles obtenidos:", levels)
+
+    # Obtener niveles completados por el usuario
+    completed_levels = await ProgressService.get_levels_completed_by_user(uid) or []
+
+    # Añadir isCompleted a cada nivel
+    levels_with_status = []
+    for lvl in levels:
+        level_dict = dict(lvl) if not isinstance(lvl, dict) else lvl
+        if "commands" not in level_dict:
+            raw_cmds = level_dict.get("listCommands", {})
+            commands = []
+            for key, val in raw_cmds.items():
+                if isinstance(val, dict):
+                    commands.extend(val.values())
+                else:
+                    commands.append(val)
+            level_dict["commands"] = commands
+        level_dict["isCompleted"] = level_dict.get("level_id") in completed_levels
+        levels_with_status.append(level_dict)
+
+    return levels_with_status
 @router.get("/{level_id}", response_model=LevelResponse, summary="Obtener detalles de un nivel")
 async def get_level(level_id: int, authorization: Optional[str] = Header(None)):
     """
@@ -68,7 +99,7 @@ async def get_level(level_id: int, authorization: Optional[str] = Header(None)):
         level_id=level.get("level_id"),
         name=level.get("name"),
         description=level.get("description"),
-        difficulty=level.get("difficulty"),
+        #difficulty=level.get("difficulty"),
         max_score=level.get("max_score"),
         order=level.get("order"),
         estimated_time=level.get("estimated_time"),

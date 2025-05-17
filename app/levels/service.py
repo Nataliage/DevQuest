@@ -7,20 +7,24 @@ class LevelService:
     async def get_all_levels():
         """
         Obtiene todos los niveles ordenados por su campo 'order'.
+        
         Returns:
-            List[dict]: Lista de niveles con sus datos y su ID.        
+            List[dict]: Lista de niveles con sus datos y su ID.
+            
         Raises:
             HTTPException: Error interno en caso de fallo al obtener datos.
         """
         try:
             levels_ref = db.collection('levels')
-            levels = levels_ref.order_by('order').get()
-            return [
-                {
-                    "level_id": level.id,
-                    **level.to_dict()
-                } for level in levels
-            ]
+            levels = levels_ref.order_by('level_id').get()
+            
+            result = []
+            for level in levels:
+                level_dict = level.to_dict()
+                level_dict["level_id"] = level_dict.get("level_id")
+                result.append(level_dict)
+            return result
+            
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

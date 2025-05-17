@@ -24,7 +24,7 @@ class ProgressService:
             return level_ids if level_ids else None
         except Exception as e:
             print(f"Error al obtener levels_completed: {str(e)}")
-            return None
+            return []
     
     
     

@@ -22,7 +22,18 @@ class LevelBase(BaseModel):
     estimated_time: int = Field(..., example=15, description="Tiempo estimado para completar el nivel en minutos")
 class LevelCreate(LevelBase):
     pass
-
+class LevelWithCompletion(BaseModel):
+    level_id: int = Field(..., example=1, description="ID único del nivel")
+    name: str = Field(..., example="Nivel 1: Introducción")
+    description: str = Field(..., example="Primer nivel para familiarizarse con los controles")
+    max_score: int = Field(..., example=100)
+    order: Optional[int] = Field(None, example=1)
+    estimated_time: Optional[int] = Field(None, example=15)
+    potions_config: Dict[str, int] = Field(...)
+    commands: List[str] = Field(...)
+    isCompleted: bool = Field(..., description="Indica si el usuario completó este nivel")
+    class Config:
+        orm_mode = True
 class Level(LevelBase):
     level_id: int = Field(..., example=1, description="ID único del nivel")
     
